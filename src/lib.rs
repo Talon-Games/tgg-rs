@@ -1,6 +1,10 @@
 pub mod crossword;
+mod load;
+mod utils;
 
 use self::crossword::{CrosswordBox, CrosswordClue, CrosswordData};
+use self::load::load;
+use self::utils::calculate_checksum;
 use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -33,6 +37,19 @@ impl TggFile {
                 path.display()
             ));
         }
+
+        let bytes: Vec<u8> = match fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(err) => return Err(format!("Failed to load file: {}", err)),
+        };
+
+        let file = match load(bytes) {
+            Ok(file) => file,
+            Err(err) => {
+                eprintln!("{}", err);
+                std::process::exit(1);
+            }
+        };
 
         Ok(())
     }
@@ -177,6 +194,14 @@ impl Game {
         }
         .to_string()
     }
+
+    pub fn from_byte(byte: u8) -> Option<Game> {
+        match byte {
+            0x01 => return Some(Game::Crossword),
+            0x02 => return Some(Game::WordSearch),
+            _ => return None,
+        }
+    }
 }
 
 pub struct Metadata {
@@ -267,15 +292,4 @@ impl Footer {
     pub fn to_bytes(&self) -> [u8; 2] {
         self.file_checksum.to_le_bytes()
     }
-}
-
-fn calculate_checksum(bytes: Vec<u8>) -> [u8; 2] {
-    let checksum = bytes
-        .iter()
-        .map(|&byte| byte as u32)
-        .sum::<u32>()
-        .to_le_bytes()[0..2]
-        .to_vec();
-
-    return [checksum[0], checksum[1]];
 }

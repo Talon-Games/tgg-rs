@@ -1,3 +1,5 @@
+use std::usize;
+
 pub struct CrosswordData {
     width: u8,
     height: u8,
@@ -6,7 +8,7 @@ pub struct CrosswordData {
     vertical_clues: Vec<CrosswordClue>,
     crossword_data: Vec<Vec<CrosswordBox>>,
 }
-
+//TODO: fully validate crossword
 impl CrosswordData {
     pub fn new(
         width: u8,
@@ -15,12 +17,41 @@ impl CrosswordData {
         vertical_clues: Vec<CrosswordClue>,
         crossword_data: Vec<Vec<CrosswordBox>>,
     ) -> Result<CrosswordData, &'static str> {
-        if crossword_data.is_empty() || crossword_data.len() != height as usize {
+        // Validate crossword size
+        if crossword_data.len() != height as usize {
             return Err("Height of crossword did not match height of crossword data");
         }
 
-        if crossword_data[0].is_empty() || crossword_data[0].len() != width as usize {
-            return Err("Width of crossword did not match width of crossword data");
+        for row in &crossword_data {
+            if row.len() != width as usize {
+                return Err("Width of crossword did not match width of crossword data");
+            }
+        }
+
+        // Validate crossword numbers
+        let mut numbers_in_crossword: Vec<u8> = Vec::new();
+        for row in &crossword_data {
+            for item in row {
+                if numbers_in_crossword.contains(&item.number) {
+                    return Err("Crossword contains duplicate numbers");
+                }
+
+                numbers_in_crossword.push(item.number);
+            }
+        }
+
+        // Validate clues
+        let mut vertical_clue_numbers: Vec<u8> = Vec::new();
+        for clue in &vertical_clues {
+            if !numbers_in_crossword.contains(&clue.number) {
+                return Err("A vertical clue contains a number not found in the crossword");
+            }
+
+            if vertical_clue_numbers.contains(&clue.number) {
+                return Err("A vertical clue contains a duplicate number");
+            }
+
+            vertical_clue_numbers.push(clue.number);
         }
 
         Ok(CrosswordData {
@@ -63,9 +94,9 @@ impl CrosswordData {
 }
 
 pub struct CrosswordClue {
-    number: u8,
-    direction: Direction,
-    value: String,
+    pub number: u8,
+    pub direction: Direction,
+    pub value: String,
 }
 
 impl CrosswordClue {
@@ -89,8 +120,8 @@ impl CrosswordClue {
 }
 
 pub struct CrosswordBox {
-    number: u8,
-    letter: CrosswordBoxValue,
+    pub number: u8,
+    pub letter: CrosswordBoxValue,
 }
 
 impl CrosswordBox {
