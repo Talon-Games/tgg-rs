@@ -66,6 +66,9 @@ pub fn load(bytes: Vec<u8>) -> Result<(), &'static str> {
 
     let header = Header::new(game, file_checksum);
     let metadata = Metadata::new(title, description, author, creation_date, gamedata_checksum);
+
+    let formated_date = metadata.get_date();
+    println!("{}", formated_date);
     let footer = Footer::new(file_checksum);
 
     Ok(())
