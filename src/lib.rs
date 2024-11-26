@@ -74,14 +74,19 @@ impl TggFile {
 
         let gamedata_checksum = calculate_checksum(crossword.to_bytes());
 
-        let metadata = Metadata::create(title, description, author, gamedata_checksum);
+        let metadata = Metadata::create(
+            title,
+            description,
+            author,
+            u16::from_le_bytes(gamedata_checksum),
+        );
 
         let mut bytes = crossword.to_bytes();
         bytes.extend(metadata.to_bytes());
 
         let file_checksum = calculate_checksum(bytes);
 
-        let footer = Footer::new(file_checksum);
+        let footer = Footer::new(u16::from_le_bytes(file_checksum));
 
         let header = Header::new(Game::Crossword, u16::from_le_bytes(file_checksum));
 
@@ -218,14 +223,14 @@ impl Metadata {
         description: String,
         author: String,
         creation_date: u32,
-        gamedata_checksum: [u8; 2],
+        gamedata_checksum: u16,
     ) -> Metadata {
         Metadata {
             title,
             description,
             author,
             creation_date,
-            gamedata_checksum: u16::from_le_bytes(gamedata_checksum),
+            gamedata_checksum,
         }
     }
 
@@ -233,7 +238,7 @@ impl Metadata {
         title: &str,
         description: &str,
         author: &str,
-        gamedata_checksum: [u8; 2],
+        gamedata_checksum: u16,
     ) -> Metadata {
         let now = SystemTime::now();
         let timestamp = now
@@ -246,7 +251,7 @@ impl Metadata {
             description: description.to_string(),
             author: author.to_string(),
             creation_date: timestamp,
-            gamedata_checksum: u16::from_le_bytes(gamedata_checksum),
+            gamedata_checksum,
         }
     }
 
@@ -283,10 +288,8 @@ pub struct Footer {
 }
 
 impl Footer {
-    pub fn new(file_checksum: [u8; 2]) -> Footer {
-        Footer {
-            file_checksum: u16::from_le_bytes(file_checksum),
-        }
+    pub fn new(file_checksum: u16) -> Footer {
+        Footer { file_checksum }
     }
 
     pub fn to_bytes(&self) -> [u8; 2] {
