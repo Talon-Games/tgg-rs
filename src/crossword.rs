@@ -11,7 +11,7 @@ pub struct CrosswordData {
 }
 //TODO: fully validate crossword
 impl CrosswordData {
-    pub fn load(bytes: &[u8]) -> Result<(), &'static str> {
+    pub fn load(bytes: &[u8]) -> Result<CrosswordData, String> {
         let mut offset = 0;
         let width = bytes[offset];
         offset += 1;
@@ -39,17 +39,48 @@ impl CrosswordData {
         offset += 1; // Skip the 0x00 separator
 
         if horizontal_clues.len() + vertical_clues.len() != total_clues as usize {
-            return Err("Amount of clues did not match total of horizontal and vertical clues");
+            return Err(format!(
+                "Failed to load Crossword, expected {} clues, found {} clues",
+                total_clues,
+                horizontal_clues.len() + vertical_clues.len()
+            ));
         };
 
+        let expected_bytes = offset as usize + (width * height) as usize * 2;
+
         // Multiply the product of width and height by 2 to account for the number byte with every char
-        if offset as usize + (width * height) as usize * 2 != bytes.len() {
-            return Err(
-                "Amount of data does not match expected amount based on crossword width and height",
-            );
+        if expected_bytes != bytes.len() {
+            return Err(format!("Failed to load Crossword, based on width and height, {} bytes are expected, but {} bytes are found", expected_bytes, bytes.len()));
         }
 
-        Ok(())
+        let mut crossword_data: Vec<Vec<CrosswordBox>> = Vec::new();
+
+        for _ in 0..height {
+            let mut row: Vec<CrosswordBox> = Vec::new();
+            for _ in 0..width {
+                let number = bytes[offset];
+                let value = match CrosswordBoxValue::from_byte(bytes[offset + 1]) {
+                    Ok(value) => value,
+                    Err(err) => return Err(err),
+                };
+                let crossword_box = match CrosswordBox::new(number, value) {
+                    Ok(crossword_box) => crossword_box,
+                    Err(err) => return Err(err.to_string()),
+                };
+                row.push(crossword_box);
+                offset += 2;
+            }
+            crossword_data.push(row);
+        }
+
+        Ok(CrosswordData {
+            width,
+            height,
+            total_clues,
+            horizontal_clues,
+            vertical_clues,
+            crossword_data,
+        })
     }
 
     pub fn new(
@@ -182,35 +213,35 @@ impl CrosswordClue {
 
 pub struct CrosswordBox {
     pub number: u8,
-    pub letter: CrosswordBoxValue,
+    pub value: CrosswordBoxValue,
 }
 
 impl CrosswordBox {
-    pub fn new(number: u8, letter: CrosswordBoxValue) -> Result<CrosswordBox, &'static str> {
-        match letter {
-            CrosswordBoxValue::Letter(letter) => {
-                if !letter.is_ascii() {
+    pub fn new(number: u8, value: CrosswordBoxValue) -> Result<CrosswordBox, &'static str> {
+        match value {
+            CrosswordBoxValue::Letter(value) => {
+                if !value.is_ascii() {
                     return Err("Failed to create crossword box, letter must be ASCII");
                 }
 
-                if !letter.is_alphabetic() {
+                if !value.is_alphabetic() {
                     return Err("Failed to create crossword box, letter must be alphabetic");
                 }
 
-                if letter.is_lowercase() {
+                if value.is_lowercase() {
                     return Err("Failed to create crossword box, letter must be uppercase");
                 }
             }
             _ => {}
         }
 
-        Ok(CrosswordBox { number, letter })
+        Ok(CrosswordBox { number, value })
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.push(self.number);
-        bytes.push(self.letter.to_byte());
+        bytes.push(self.value.to_byte());
 
         return bytes;
     }
@@ -225,9 +256,26 @@ pub enum CrosswordBoxValue {
 impl CrosswordBoxValue {
     pub fn to_byte(&self) -> u8 {
         match self {
-            CrosswordBoxValue::Empty => 0x20,
-            CrosswordBoxValue::Solid => 0x23,
+            CrosswordBoxValue::Empty => 0x20, // ASCII for space
+            CrosswordBoxValue::Solid => 0x23, // ASCII for #
             CrosswordBoxValue::Letter(letter) => *letter as u8,
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            CrosswordBoxValue::Empty => " ".to_string(),
+            CrosswordBoxValue::Solid => "#".to_string(),
+            CrosswordBoxValue::Letter(letter) => letter.to_string(),
+        }
+    }
+
+    pub fn from_byte(byte: u8) -> Result<Self, String> {
+        match byte {
+            0x20 => Ok(CrosswordBoxValue::Empty), // ASCII for space
+            0x23 => Ok(CrosswordBoxValue::Solid), // ASCII for #
+            b if b.is_ascii_alphabetic() => Ok(CrosswordBoxValue::Letter(b as char)),
+            _ => Err(format!("Invalid byte for CrosswordBoxValue: {:02X}", byte)),
         }
     }
 }

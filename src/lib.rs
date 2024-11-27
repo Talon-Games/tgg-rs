@@ -22,7 +22,7 @@ pub struct TggFile {
 }
 
 impl TggFile {
-    pub fn load(path: &Path) -> Result<(), String> {
+    pub fn load(path: &Path) -> Result<TggFile, String> {
         if let Some(extension) = path.extension() {
             if extension != "tgg" {
                 return Err(format!(
@@ -53,7 +53,7 @@ impl TggFile {
             }
         };
 
-        Ok(())
+        Ok(file)
     }
 
     pub fn create_for_crossword(
@@ -90,7 +90,11 @@ impl TggFile {
 
         let footer = Footer::new(u16::from_le_bytes(file_checksum));
 
-        let header = Header::new(Game::Crossword, u16::from_le_bytes(file_checksum));
+        let header = Header::new(
+            VERSION.to_string(),
+            Game::Crossword,
+            u16::from_le_bytes(file_checksum),
+        );
 
         Ok(TggFile {
             header,
@@ -160,9 +164,9 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn new(game: Game, file_checksum: u16) -> Header {
+    pub fn new(version: String, game: Game, file_checksum: u16) -> Header {
         Header {
-            version: VERSION.to_string(),
+            version,
             id: ID.to_string(),
             game,
             file_checksum,
