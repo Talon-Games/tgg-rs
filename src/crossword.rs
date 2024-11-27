@@ -1,3 +1,4 @@
+use crate::utils::extract_cstring_with_offset;
 use std::usize;
 
 pub struct CrosswordData {
@@ -10,6 +11,47 @@ pub struct CrosswordData {
 }
 //TODO: fully validate crossword
 impl CrosswordData {
+    pub fn load(bytes: &[u8]) -> Result<(), &'static str> {
+        let mut offset = 0;
+        let width = bytes[offset];
+        offset += 1;
+        let height = bytes[offset];
+        offset += 1;
+        let total_clues = bytes[offset];
+        offset += 1;
+
+        // Parse horizontal clues
+        let mut horizontal_clues = Vec::new();
+        while bytes[offset] != 0x00 {
+            let (clue, new_offset) = parse_crossword_clue(bytes, offset);
+            horizontal_clues.push(clue);
+            offset = new_offset;
+        }
+        offset += 1; // Skip the 0x00 separator
+
+        // Parse vertical clues
+        let mut vertical_clues = Vec::new();
+        while bytes[offset] != 0x00 {
+            let (clue, new_offset) = parse_crossword_clue(bytes, offset);
+            vertical_clues.push(clue);
+            offset = new_offset;
+        }
+        offset += 1; // Skip the 0x00 separator
+
+        if horizontal_clues.len() + vertical_clues.len() != total_clues as usize {
+            return Err("Amount of clues did not match total of horizontal and vertical clues");
+        };
+
+        // Multiply the product of width and height by 2 to account for the number byte with every char
+        if offset as usize + (width * height) as usize * 2 != bytes.len() {
+            return Err(
+                "Amount of data does not match expected amount based on crossword width and height",
+            );
+        }
+
+        Ok(())
+    }
+
     pub fn new(
         width: u8,
         height: u8,
@@ -32,7 +74,7 @@ impl CrosswordData {
         let mut numbers_in_crossword: Vec<u8> = Vec::new();
         for row in &crossword_data {
             for item in row {
-                if numbers_in_crossword.contains(&item.number) {
+                if numbers_in_crossword.contains(&item.number) && item.number != 0 {
                     return Err("Crossword contains duplicate numbers");
                 }
 
@@ -41,17 +83,32 @@ impl CrosswordData {
         }
 
         // Validate clues
-        let mut vertical_clue_numbers: Vec<u8> = Vec::new();
+        let mut clue_numbers: Vec<u8> = Vec::new();
         for clue in &vertical_clues {
             if !numbers_in_crossword.contains(&clue.number) {
                 return Err("A vertical clue contains a number not found in the crossword");
             }
 
-            if vertical_clue_numbers.contains(&clue.number) {
+            if clue_numbers.contains(&clue.number) {
                 return Err("A vertical clue contains a duplicate number");
             }
 
-            vertical_clue_numbers.push(clue.number);
+            clue_numbers.push(clue.number);
+        }
+
+        clue_numbers.clear();
+
+        // Horizontal clues
+        for clue in &horizontal_clues {
+            if !numbers_in_crossword.contains(&clue.number) {
+                return Err("A horizontal clue contains a number not found in the crossword");
+            }
+
+            if clue_numbers.contains(&clue.number) {
+                return Err("A horizontal clue contains a duplicate number");
+            }
+
+            clue_numbers.push(clue.number);
         }
 
         Ok(CrosswordData {
@@ -93,17 +150,22 @@ impl CrosswordData {
     }
 }
 
+fn parse_crossword_clue(bytes: &[u8], start: usize) -> (CrosswordClue, usize) {
+    let number = bytes[start];
+    let (value, end_offset) = extract_cstring_with_offset(bytes, start + 1); // Start after the clue number
+    let clue = CrosswordClue::new(number, &value);
+    (clue, end_offset)
+}
+
 pub struct CrosswordClue {
     pub number: u8,
-    pub direction: Direction,
     pub value: String,
 }
 
 impl CrosswordClue {
-    pub fn new(number: u8, direction: Direction, value: &str) -> CrosswordClue {
+    pub fn new(number: u8, value: &str) -> CrosswordClue {
         CrosswordClue {
             number,
-            direction,
             value: value.to_string(),
         }
     }
@@ -112,7 +174,6 @@ impl CrosswordClue {
         let mut bytes = Vec::new();
 
         bytes.push(self.number);
-        bytes.push(self.direction.to_byte());
         bytes.extend(self.value.as_bytes());
         bytes.push(0);
         bytes
@@ -167,20 +228,6 @@ impl CrosswordBoxValue {
             CrosswordBoxValue::Empty => 0x20,
             CrosswordBoxValue::Solid => 0x23,
             CrosswordBoxValue::Letter(letter) => *letter as u8,
-        }
-    }
-}
-
-pub enum Direction {
-    Down,
-    Across,
-}
-
-impl Direction {
-    pub fn to_byte(&self) -> u8 {
-        match self {
-            Direction::Down => return 0x01,
-            Direction::Across => return 0x02,
         }
     }
 }

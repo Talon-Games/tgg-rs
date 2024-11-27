@@ -1,4 +1,8 @@
-use crate::{utils::calculate_checksum, Footer, Game, Header, Metadata};
+use crate::{
+    crossword::CrosswordData,
+    utils::{calculate_checksum, extract_cstring, extract_cstring_with_offset},
+    Footer, Game, GameData, Header, Metadata,
+};
 
 pub fn load(bytes: Vec<u8>) -> Result<(), &'static str> {
     // Validate and extract header
@@ -64,6 +68,20 @@ pub fn load(bytes: Vec<u8>) -> Result<(), &'static str> {
 
     let game_data = &body[offset + 6..body.len()];
 
+    println!("{:02X?}", game_data);
+
+    match CrosswordData::load(game_data) {
+        Ok(_) => {}
+        Err(err) => {
+            println!("{}", err)
+        }
+    };
+
+    // let gamedata: GameData = match game {
+    //     Game::Crossword => !unimplemented!("not done"),
+    //     Game::WordSearch => !unimplemented!("no done"),
+    // };
+
     let header = Header::new(game, file_checksum);
     let metadata = Metadata::new(title, description, author, creation_date, gamedata_checksum);
 
@@ -72,24 +90,4 @@ pub fn load(bytes: Vec<u8>) -> Result<(), &'static str> {
     let footer = Footer::new(file_checksum);
 
     Ok(())
-}
-
-fn extract_cstring(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .take_while(|&&byte| byte != 0x00)
-        .map(|&byte| byte as char)
-        .collect()
-}
-
-fn extract_cstring_with_offset(bytes: &[u8], start: usize) -> (String, usize) {
-    let mut end = start;
-    while end < bytes.len() && bytes[end] != 0x00 {
-        end += 1;
-    }
-    let result = bytes[start..end]
-        .iter()
-        .map(|&byte| byte as char)
-        .collect::<String>();
-    (result, end + 1) // +1 to skip the null terminator
 }
