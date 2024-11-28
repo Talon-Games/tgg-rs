@@ -94,5 +94,13 @@ pub fn main() {
 
     let path = Path::new("./crossword.tgg");
 
-    let tgg_file = TggFile::load(path);
+    let tgg_file = match TggFile::load(path) {
+        Ok(tgg_file) => tgg_file,
+        Err(err) => {
+            eprintln!("{}", err);
+            std::process::exit(1);
+        }
+    };
+
+    let game_data = tgg_file.get_game_data();
 }

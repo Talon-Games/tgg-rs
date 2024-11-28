@@ -2,12 +2,12 @@ use crate::utils::extract_cstring_with_offset;
 use std::usize;
 
 pub struct CrosswordData {
-    width: u8,
-    height: u8,
-    total_clues: u8,
-    horizontal_clues: Vec<CrosswordClue>,
-    vertical_clues: Vec<CrosswordClue>,
-    crossword_data: Vec<Vec<CrosswordBox>>,
+    pub width: u8,
+    pub height: u8,
+    pub total_clues: u8,
+    pub horizontal_clues: Vec<CrosswordClue>,
+    pub vertical_clues: Vec<CrosswordClue>,
+    pub crossword_data: Vec<Vec<CrosswordBox>>,
 }
 //TODO: fully validate crossword
 impl CrosswordData {
@@ -181,13 +181,6 @@ impl CrosswordData {
     }
 }
 
-fn parse_crossword_clue(bytes: &[u8], start: usize) -> (CrosswordClue, usize) {
-    let number = bytes[start];
-    let (value, end_offset) = extract_cstring_with_offset(bytes, start + 1); // Start after the clue number
-    let clue = CrosswordClue::new(number, &value);
-    (clue, end_offset)
-}
-
 pub struct CrosswordClue {
     pub number: u8,
     pub value: String,
@@ -278,4 +271,11 @@ impl CrosswordBoxValue {
             _ => Err(format!("Invalid byte for CrosswordBoxValue: {:02X}", byte)),
         }
     }
+}
+
+fn parse_crossword_clue(bytes: &[u8], start: usize) -> (CrosswordClue, usize) {
+    let number = bytes[start];
+    let (value, end_offset) = extract_cstring_with_offset(bytes, start + 1); // Start after the clue number
+    let clue = CrosswordClue::new(number, &value);
+    (clue, end_offset)
 }

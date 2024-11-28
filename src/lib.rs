@@ -151,8 +151,32 @@ impl TggFile {
         bytes
     }
 
-    pub fn game_name(&self) -> String {
+    pub fn get_game_name(&self) -> String {
         return self.header.game.to_string();
+    }
+
+    pub fn get_title(&self) -> String {
+        return self.metadata.title.to_string();
+    }
+
+    pub fn get_description(&self) -> String {
+        return self.metadata.description.to_string();
+    }
+
+    pub fn get_author(&self) -> String {
+        return self.metadata.author.to_string();
+    }
+
+    pub fn get_raw_creation_date(&self) -> u32 {
+        return self.metadata.creation_date;
+    }
+
+    pub fn get_formatted_creation_date(&self) -> String {
+        return self.metadata.get_date();
+    }
+
+    pub fn get_game_data<'a>(&'a self) -> &'a GameData {
+        return &self.gamedata;
     }
 }
 
@@ -216,10 +240,10 @@ impl Game {
 }
 
 pub struct Metadata {
-    title: String,
-    description: String,
-    author: String,
-    creation_date: u32,
+    pub title: String,
+    pub description: String,
+    pub author: String,
+    pub creation_date: u32,
     gamedata_checksum: u16,
 }
 
