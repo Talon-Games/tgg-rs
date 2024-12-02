@@ -14,6 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const VERSION: &str = "0.1.0";
 const ID: &str = "TalonGamesGame";
 
+#[derive(Debug)]
 pub struct TggFile {
     header: Header,
     metadata: Metadata,
@@ -47,10 +48,7 @@ impl TggFile {
 
         let file = match load(bytes) {
             Ok(file) => file,
-            Err(err) => {
-                eprintln!("{}", err);
-                std::process::exit(1);
-            }
+            Err(err) => return Err(err),
         };
 
         Ok(file)
@@ -180,6 +178,7 @@ impl TggFile {
     }
 }
 
+#[derive(Debug)]
 pub struct Header {
     version: String,
     id: String,
@@ -209,6 +208,7 @@ impl Header {
     }
 }
 
+#[derive(Debug)]
 pub enum Game {
     Crossword,
     WordSearch,
@@ -239,6 +239,7 @@ impl Game {
     }
 }
 
+#[derive(Debug)]
 pub struct Metadata {
     pub title: String,
     pub description: String,
@@ -305,6 +306,7 @@ impl Metadata {
     }
 }
 
+#[derive(Debug)]
 pub enum GameData {
     Crossword(CrosswordData),
 }
@@ -317,6 +319,7 @@ impl GameData {
     }
 }
 
+#[derive(Debug)]
 pub struct Footer {
     file_checksum: u16,
 }

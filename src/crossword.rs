@@ -1,6 +1,7 @@
 use crate::utils::extract_cstring_with_offset;
 use std::usize;
 
+#[derive(Debug)]
 pub struct CrosswordData {
     pub width: u8,
     pub height: u8,
@@ -9,7 +10,7 @@ pub struct CrosswordData {
     pub vertical_clues: Vec<CrosswordClue>,
     pub crossword_data: Vec<Vec<CrosswordBox>>,
 }
-//TODO: fully validate crossword
+
 impl CrosswordData {
     pub fn load(bytes: &[u8]) -> Result<CrosswordData, String> {
         let mut offset = 0;
@@ -181,6 +182,7 @@ impl CrosswordData {
     }
 }
 
+#[derive(Debug)]
 pub struct CrosswordClue {
     pub number: u8,
     pub value: String,
@@ -204,6 +206,7 @@ impl CrosswordClue {
     }
 }
 
+#[derive(Debug)]
 pub struct CrosswordBox {
     pub number: u8,
     pub value: CrosswordBoxValue,
@@ -240,6 +243,7 @@ impl CrosswordBox {
     }
 }
 
+#[derive(Debug)]
 pub enum CrosswordBoxValue {
     Empty,
     Solid,
