@@ -14,6 +14,9 @@ pub struct CrosswordData {
 impl CrosswordData {
     pub fn load(bytes: &[u8]) -> Result<CrosswordData, String> {
         let mut offset = 0;
+        if bytes.len() < 3 {
+            return Err("Unexpected end of file while parsing".to_string());
+        }
         let width = bytes[offset];
         offset += 1;
         let height = bytes[offset];
@@ -21,6 +24,17 @@ impl CrosswordData {
         let total_clues = bytes[offset];
         offset += 1;
 
+        if width == 0 || height == 0 {
+            return Err(
+                "Invalid crossword dimensions: width and height must be non-zero".to_string(),
+            );
+        }
+
+        if total_clues == 0 {
+            return Err("Invalid crossword: total clues must be greater than zero".to_string());
+        }
+
+        //TODO: more error handling here for length
         // Parse horizontal clues
         let mut horizontal_clues = Vec::new();
         while bytes[offset] != 0x00 {
@@ -41,7 +55,7 @@ impl CrosswordData {
 
         if horizontal_clues.len() + vertical_clues.len() != total_clues as usize {
             return Err(format!(
-                "Failed to load Crossword, expected {} clues, found {} clues",
+                "Failed to load Crossword: expected {} clues, found {} clues",
                 total_clues,
                 horizontal_clues.len() + vertical_clues.len()
             ));
@@ -51,7 +65,7 @@ impl CrosswordData {
 
         // Multiply the product of width and height by 2 to account for the number byte with every char
         if expected_bytes != bytes.len() {
-            return Err(format!("Failed to load Crossword, based on width and height, {} bytes are expected, but {} bytes are found", expected_bytes, bytes.len()));
+            return Err(format!("Failed to load Crossword: based on width and height, {} bytes are expected, but {} bytes are found", expected_bytes, bytes.len()));
         }
 
         let mut crossword_data: Vec<Vec<CrosswordBox>> = Vec::new();

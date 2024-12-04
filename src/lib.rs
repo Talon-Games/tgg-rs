@@ -1,6 +1,7 @@
 pub mod crossword;
 mod date;
 mod load;
+pub mod tgg_errors;
 mod utils;
 
 use crate::crossword::{CrosswordBox, CrosswordClue, CrosswordData};
@@ -179,7 +180,7 @@ impl TggFile {
 }
 
 #[derive(Debug)]
-pub struct Header {
+struct Header {
     version: String,
     id: String,
     pub game: Game,
@@ -240,7 +241,7 @@ impl Game {
 }
 
 #[derive(Debug)]
-pub struct Metadata {
+struct Metadata {
     pub title: String,
     pub description: String,
     pub author: String,
@@ -320,7 +321,7 @@ impl GameData {
 }
 
 #[derive(Debug)]
-pub struct Footer {
+struct Footer {
     file_checksum: u16,
 }
 

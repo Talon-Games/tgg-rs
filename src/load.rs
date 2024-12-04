@@ -7,22 +7,40 @@ use crate::{
 pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
     // Validate and extract header
     if bytes.len() < 24 {
-        return Err("Failed to load file: insufficient data".to_string());
+        return Err(format!(
+            "Failed to load file: insufficient data (expected at least 24 bytes, got {})",
+            bytes.len()
+        ));
     }
 
+    // Validate and extract header
     let header_bytes = &bytes[0..22];
     if header_bytes.len() != 22 {
-        return Err("Failed to load file: invalid header length".to_string());
+        return Err(format!(
+            "Failed to load file: invalid header length (expected 22 bytes, got {})",
+            header_bytes.len()
+        ));
     }
 
     let version = extract_cstring(&header_bytes[0..5]);
     let id = extract_cstring(&header_bytes[5..19]);
 
     if id != "TalonGamesGame" {
-        return Err("Failed to load file: invalid ID".to_string());
+        return Err(format!(
+            "Failed to load file: invalid ID (expected 'TalonGamesGame', got '{}')",
+            id
+        ));
     }
 
-    let game = Game::from_byte(header_bytes[19]).ok_or("Failed to load file: invalid game type")?;
+    let game = match Game::from_byte(header_bytes[19]) {
+        Some(game) => game,
+        None => {
+            return Err(format!(
+                "Failed to load file: invalid game type byte (got 0x{:02X})",
+                header_bytes[19]
+            ));
+        }
+    };
     let file_checksum = u16::from_le_bytes([header_bytes[20], header_bytes[21]]);
 
     // Validate body length
@@ -37,8 +55,29 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
     let (description, offset) = extract_cstring_with_offset(body, offset);
     let (author, offset) = extract_cstring_with_offset(body, offset);
 
+    if title.is_empty() {
+        return Err("Failed to load file: title is empty".to_string());
+    }
+
+    if description.is_empty() {
+        return Err("Failed to load file: description is empty".to_string());
+    }
+
+    if author.is_empty() {
+        return Err("Failed to load file: author is empty".to_string());
+    }
+
     if offset + 6 > body.len() {
         return Err("Failed to load file: incomplete metadata".to_string());
+    }
+
+    // Validate metadata boundaries
+    if offset + 6 > body.len() {
+        return Err(format!(
+            "Failed to load file: incomplete metadata (expected at least {} bytes, got {})",
+            offset + 6,
+            body.len()
+        ));
     }
 
     let creation_date_bytes = &body[offset..offset + 4];
@@ -50,11 +89,23 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
     // Verify checksums
     let calculated_checksum = u16::from_le_bytes(calculate_checksum(body.to_vec()));
     let footer_file_checksum = u16::from_le_bytes([bytes[bytes.len() - 2], bytes[bytes.len() - 1]]);
-    if file_checksum != calculated_checksum || file_checksum != footer_file_checksum {
-        return Err("Failed to load file: checksum mismatch".to_string());
+    if file_checksum != calculated_checksum {
+        return Err(format!(
+            "Failed to load file: header checksum mismatch (expected {}, calculated {})",
+            file_checksum, calculated_checksum
+        ));
+    }
+    if file_checksum != footer_file_checksum {
+        return Err(format!(
+            "Failed to load file: footer checksum mismatch (expected {}, found {})",
+            file_checksum, footer_file_checksum
+        ));
     }
 
     let game_data = &body[offset + 6..body.len()];
+    if game_data.is_empty() {
+        return Err("Failed to load file: game data is empty".to_string());
+    }
 
     let gamedata: GameData = match game {
         Game::Crossword => {
@@ -65,7 +116,9 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
 
             GameData::Crossword(crossword_data)
         }
-        Game::WordSearch => !unimplemented!("no done"),
+        Game::WordSearch => {
+            return Err("Failed to load file: Word Search is not yet implemented".to_string());
+        }
     };
 
     let header = Header::new(version, game, file_checksum);
