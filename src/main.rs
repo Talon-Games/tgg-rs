@@ -2,11 +2,6 @@ use std::path::Path;
 use tgg::crossword::{CrosswordBox, CrosswordBoxValue, CrosswordClue};
 use tgg::TggFile;
 
-/**
-* C A T
-* # # A
-* # # B
-*/
 pub fn main() {
     // let mut horizontal_clues: Vec<CrosswordClue> = Vec::new();
     // let mut vertical_clues: Vec<CrosswordClue> = Vec::new();
@@ -94,13 +89,11 @@ pub fn main() {
 
     let path = Path::new("./tests/crosswords/crossword.tgg");
 
-    let tgg_file = match TggFile::load(path) {
+    let tgg_file = match TggFile::load_from_file(path) {
         Ok(tgg_file) => tgg_file,
         Err(err) => {
             eprintln!("{}", err);
             std::process::exit(1);
         }
     };
-
-    let game_data = tgg_file.get_game_data();
 }

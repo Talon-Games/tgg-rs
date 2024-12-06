@@ -34,7 +34,6 @@ impl CrosswordData {
             return Err("Invalid crossword: total clues must be greater than zero".to_string());
         }
 
-        //TODO: more error handling here for length
         // Parse horizontal clues
         let mut horizontal_clues = Vec::new();
         while bytes[offset] != 0x00 {

@@ -24,7 +24,16 @@ pub struct TggFile {
 }
 
 impl TggFile {
-    pub fn load(path: &Path) -> Result<TggFile, String> {
+    pub fn load_from_bytes(bytes: Vec<u8>) -> Result<TggFile, String> {
+        let file = match load(bytes) {
+            Ok(file) => file,
+            Err(err) => return Err(err),
+        };
+
+        Ok(file)
+    }
+
+    pub fn load_from_file(path: &Path) -> Result<TggFile, String> {
         if let Some(extension) = path.extension() {
             if extension != "tgg" {
                 return Err(format!(
