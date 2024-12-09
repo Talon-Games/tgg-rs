@@ -96,4 +96,6 @@ pub fn main() {
             std::process::exit(1);
         }
     };
+
+    println!("{}", tgg_file.get_title());
 }
