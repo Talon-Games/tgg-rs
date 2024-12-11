@@ -6,24 +6,23 @@ use crate::{
 
 pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
     // Validate and extract header
-    if bytes.len() < 24 {
+    if bytes.len() < 17 {
         return Err(format!(
-            "Failed to load file: insufficient data (expected at least 24 bytes, got {})",
+            "Failed to load file: insufficient data (expected at least 17 bytes, got {})",
             bytes.len()
         ));
     }
 
     // Validate and extract header
-    let header_bytes = &bytes[0..22];
-    if header_bytes.len() != 22 {
+    let header_bytes = &bytes[0..17];
+    if header_bytes.len() != 17 {
         return Err(format!(
-            "Failed to load file: invalid header length (expected 22 bytes, got {})",
+            "Failed to load file: invalid header length (expected 17 bytes, got {})",
             header_bytes.len()
         ));
     }
 
-    let version = extract_cstring(&header_bytes[0..5]);
-    let id = extract_cstring(&header_bytes[5..19]);
+    let id = extract_cstring(&header_bytes[0..14]);
 
     if id != "TalonGamesGame" {
         return Err(format!(
@@ -32,23 +31,18 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
         ));
     }
 
-    let game = match Game::from_byte(header_bytes[19]) {
+    let game = match Game::from_byte(header_bytes[14]) {
         Some(game) => game,
         None => {
             return Err(format!(
                 "Failed to load file: invalid game type byte (got 0x{:02X})",
-                header_bytes[19]
+                header_bytes[14]
             ));
         }
     };
-    let file_checksum = u16::from_le_bytes([header_bytes[20], header_bytes[21]]);
+    let file_checksum = u16::from_le_bytes([header_bytes[15], header_bytes[16]]);
 
-    // Validate body length
-    if bytes.len() < 24 {
-        return Err("Failed to load file: insufficient body data".to_string());
-    }
-
-    let body = &bytes[22..bytes.len() - 2];
+    let body = &bytes[17..bytes.len() - 2];
 
     // Extract metadata
     let (title, offset) = extract_cstring_with_offset(body, 0);
@@ -121,7 +115,7 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
         }
     };
 
-    let header = Header::new(version, game, file_checksum);
+    let header = Header::new(game, file_checksum);
     let metadata = Metadata::new(title, description, author, creation_date, gamedata_checksum);
     let footer = Footer::new(file_checksum);
 

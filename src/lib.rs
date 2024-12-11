@@ -1,18 +1,13 @@
 pub mod crossword;
 mod date;
 mod load;
-pub mod tgg_errors;
 mod utils;
-
 use crate::crossword::{CrosswordBox, CrosswordClue, CrosswordData};
 use crate::date::format_timestamp;
 use crate::load::load;
 use crate::utils::calculate_checksum;
-use std::fs;
-use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const VERSION: &str = "0.1.0";
 const ID: &str = "TalonGamesGame";
 
 #[derive(Debug)]
@@ -24,7 +19,7 @@ pub struct TggFile {
 }
 
 impl TggFile {
-    pub fn load_from_bytes(bytes: Vec<u8>) -> Result<TggFile, String> {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<TggFile, String> {
         let file = match load(bytes) {
             Ok(file) => file,
             Err(err) => return Err(err),
@@ -33,38 +28,7 @@ impl TggFile {
         Ok(file)
     }
 
-    pub fn load_from_file(path: &Path) -> Result<TggFile, String> {
-        if let Some(extension) = path.extension() {
-            if extension != "tgg" {
-                return Err(format!(
-                    "Failed to load file: the file must have a .tgg extension"
-                ));
-            }
-        } else {
-            return Err("Failed to load file: the file must have a .tgg extension".to_string());
-        }
-
-        if !path.exists() {
-            return Err(format!(
-                "Failed to load file: file does not exist at {}",
-                path.display()
-            ));
-        }
-
-        let bytes: Vec<u8> = match fs::read(path) {
-            Ok(bytes) => bytes,
-            Err(err) => return Err(format!("Failed to load file: {}", err)),
-        };
-
-        let file = match load(bytes) {
-            Ok(file) => file,
-            Err(err) => return Err(err),
-        };
-
-        Ok(file)
-    }
-
-    pub fn create_for_crossword(
+    pub fn custom_crossword(
         title: &str,
         description: &str,
         author: &str,
@@ -98,11 +62,7 @@ impl TggFile {
 
         let footer = Footer::new(u16::from_le_bytes(file_checksum));
 
-        let header = Header::new(
-            VERSION.to_string(),
-            Game::Crossword,
-            u16::from_le_bytes(file_checksum),
-        );
+        let header = Header::new(Game::Crossword, u16::from_le_bytes(file_checksum));
 
         Ok(TggFile {
             header,
@@ -110,42 +70,6 @@ impl TggFile {
             gamedata: GameData::Crossword(crossword),
             footer,
         })
-    }
-
-    pub fn save(&self, path: &Path) -> Result<(), String> {
-        if let Some(extension) = path.extension() {
-            if extension != "tgg" {
-                return Err(format!(
-                    "Failed to save file: the file must have a .tgg extension"
-                ));
-            }
-        } else {
-            return Err("Failed to save file: the file must have a .tgg extension".to_string());
-        }
-
-        if path.exists() {
-            return Err(format!(
-                "Failed to save file: file already exists at {}",
-                path.display()
-            ));
-        }
-
-        if let Some(parent) = path.parent() {
-            if !parent.exists() {
-                // Create the parent directory if it doesn't exist
-                if let Err(e) = fs::create_dir_all(parent) {
-                    return Err(format!("Failed to create parent directory: {}", e));
-                }
-            }
-        } else {
-            return Err("Failed to save file: invalid file path".to_string());
-        }
-
-        let contents = self.to_bytes();
-
-        fs::write(path, contents).map_err(|e| format!("Failed to save file: {}", e))?;
-
-        Ok(())
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -190,16 +114,14 @@ impl TggFile {
 
 #[derive(Debug)]
 struct Header {
-    version: String,
     id: String,
     pub game: Game,
     file_checksum: u16,
 }
 
 impl Header {
-    pub fn new(version: String, game: Game, file_checksum: u16) -> Header {
+    pub fn new(game: Game, file_checksum: u16) -> Header {
         Header {
-            version,
             id: ID.to_string(),
             game,
             file_checksum,
@@ -209,7 +131,6 @@ impl Header {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
 
-        bytes.extend(self.version.as_bytes());
         bytes.extend(self.id.as_bytes());
         bytes.push(self.game.to_byte());
         bytes.extend(self.file_checksum.to_le_bytes());
