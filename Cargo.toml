@@ -2,5 +2,14 @@
 name = "tgg"
 version = "0.1.0"
 edition = "2021"
+authors = ["cqb13 <cqb13.dev@gmail.com>"]
+description = "Library for reading TGG files used by Talon Games"
+readme = "README.md"
+homepage = "https://github.com/Talon-Games/tgg-rs"
+repository = "https://github.com/Talon-Games/tgg-rs"
+license = "MIT"
+keywords = ["Talon Games", "TGG", "file parsing"]
+publish = true
 
 [dependencies]
+
