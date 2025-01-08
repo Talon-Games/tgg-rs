@@ -1,6 +1,6 @@
 use crate::{
     crossword::CrosswordData,
-    utils::{calculate_checksum, extract_cstring, extract_cstring_with_offset},
+    utils::{calculate_checksum, extract_cstring_with_offset},
     Footer, Game, GameData, Header, Metadata, TggFile,
 };
 
@@ -13,16 +13,12 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
         ));
     }
 
-    // Validate and extract header
     let header_bytes = &bytes[0..17];
-    if header_bytes.len() != 17 {
-        return Err(format!(
-            "Failed to load file: invalid header length (expected 17 bytes, got {})",
-            header_bytes.len()
-        ));
-    }
 
-    let id = extract_cstring(&header_bytes[0..14]);
+    let id: String = header_bytes[0..14]
+        .iter()
+        .map(|&byte| byte as char)
+        .collect();
 
     if id != "TalonGamesGame" {
         return Err(format!(
