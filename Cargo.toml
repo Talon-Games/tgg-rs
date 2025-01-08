@@ -8,7 +8,7 @@ readme = "README.md"
 homepage = "https://github.com/Talon-Games/tgg-rs"
 repository = "https://github.com/Talon-Games/tgg-rs"
 license = "MIT"
-keywords = ["Talon-Games", "TGG", "file parsing"]
+keywords = ["Talon-Games", "TGG"]
 publish = true
 
 [dependencies]
