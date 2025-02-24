@@ -106,7 +106,7 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
 
             GameData::Crossword(crossword_data)
         }
-        Game::WordSearch => {
+        Game::WordLadder => {
             return Err("Failed to load file: Word Search is not yet implemented".to_string());
         }
     };

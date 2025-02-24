@@ -2,6 +2,8 @@ pub mod crossword;
 mod date;
 mod load;
 mod utils;
+pub mod word_ladder;
+
 use crate::crossword::{CrosswordBox, CrosswordClue, CrosswordData};
 use crate::date::format_timestamp;
 use crate::load::load;
@@ -142,21 +144,21 @@ impl Header {
 #[derive(Debug)]
 pub enum Game {
     Crossword,
-    WordSearch,
+    WordLadder,
 }
 
 impl Game {
     pub fn to_byte(&self) -> u8 {
         match self {
             Game::Crossword => return 0x01,
-            Game::WordSearch => return 0x02,
+            Game::WordLadder => return 0x02,
         }
     }
 
     pub fn to_string(&self) -> String {
         match self {
             Game::Crossword => "Crossword",
-            Game::WordSearch => "Word Search",
+            Game::WordLadder => "Word Ladder",
         }
         .to_string()
     }
@@ -164,7 +166,7 @@ impl Game {
     pub fn from_byte(byte: u8) -> Option<Game> {
         match byte {
             0x01 => return Some(Game::Crossword),
-            0x02 => return Some(Game::WordSearch),
+            0x02 => return Some(Game::WordLadder),
             _ => return None,
         }
     }

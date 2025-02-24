@@ -1,5 +1,4 @@
 use crate::utils::extract_cstring_with_offset;
-use std::usize;
 
 #[derive(Debug)]
 pub struct CrosswordData {
