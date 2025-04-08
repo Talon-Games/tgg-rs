@@ -194,7 +194,7 @@ impl CrosswordData {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CrosswordClue {
     pub number: u8,
     pub value: String,
@@ -218,7 +218,7 @@ impl CrosswordClue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CrosswordBox {
     pub number: u8,
     pub value: CrosswordBoxValue,
@@ -255,7 +255,7 @@ impl CrosswordBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CrosswordBoxValue {
     Empty,
     Solid,
