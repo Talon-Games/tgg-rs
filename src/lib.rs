@@ -6,6 +6,8 @@ use crate::crossword::{CrosswordBox, CrosswordClue, CrosswordData};
 use crate::date::format_timestamp;
 use crate::load::load;
 use crate::utils::calculate_checksum;
+pub mod error;
+use crate::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const ID: &str = "TalonGamesGame";
@@ -19,7 +21,7 @@ pub struct TggFile {
 }
 
 impl TggFile {
-    pub fn from_bytes(bytes: Vec<u8>) -> Result<TggFile, String> {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<TggFile, Error> {
         let file = match load(bytes) {
             Ok(file) => file,
             Err(err) => return Err(err),
@@ -37,7 +39,7 @@ impl TggFile {
         horizontal_clues: Vec<CrosswordClue>,
         vertical_clues: Vec<CrosswordClue>,
         crossword_data: Vec<Vec<CrosswordBox>>,
-    ) -> Result<TggFile, &'static str> {
+    ) -> Result<TggFile, Error> {
         let crossword = CrosswordData::new(
             width,
             height,

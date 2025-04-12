@@ -1,16 +1,16 @@
 use crate::{
     crossword::CrosswordData,
     utils::{calculate_checksum, extract_cstring_with_offset},
-    Footer, Game, GameData, Header, Metadata, TggFile,
+    Error, Footer, Game, GameData, Header, Metadata, TggFile,
 };
 
-pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
+pub fn load(bytes: Vec<u8>) -> Result<TggFile, Error> {
     // Validate and extract header
     if bytes.len() < 17 {
-        return Err(format!(
-            "Failed to load file: insufficient data (expected at least 17 bytes, got {})",
-            bytes.len()
-        ));
+        return Err(Error::InsufficientHeaderBytes {
+            min: 17,
+            found: bytes.len() as u32,
+        });
     }
 
     let header_bytes = &bytes[0..17];
@@ -21,19 +21,15 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
         .collect();
 
     if id != "TalonGamesGame" {
-        return Err(format!(
-            "Failed to load file: invalid ID (expected 'TalonGamesGame', got '{}')",
-            id
-        ));
+        return Err(Error::InvalidID);
     }
 
     let game = match Game::from_byte(header_bytes[14]) {
         Some(game) => game,
         None => {
-            return Err(format!(
-                "Failed to load file: invalid game type byte (got 0x{:02X})",
-                header_bytes[14]
-            ));
+            return Err(Error::InvalidGameTypeByte {
+                found: header_bytes[14],
+            });
         }
     };
     let file_checksum = u16::from_le_bytes([header_bytes[15], header_bytes[16]]);
@@ -46,28 +42,23 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
     let (author, offset) = extract_cstring_with_offset(body, offset);
 
     if title.is_empty() {
-        return Err("Failed to load file: title is empty".to_string());
+        return Err(Error::TitleIsEmpty);
     }
 
     if description.is_empty() {
-        return Err("Failed to load file: description is empty".to_string());
+        return Err(Error::DescriptionIsEmpty);
     }
 
     if author.is_empty() {
-        return Err("Failed to load file: author is empty".to_string());
-    }
-
-    if offset + 6 > body.len() {
-        return Err("Failed to load file: incomplete metadata".to_string());
+        return Err(Error::AuthorIsEmpty);
     }
 
     // Validate metadata boundaries
     if offset + 6 > body.len() {
-        return Err(format!(
-            "Failed to load file: incomplete metadata (expected at least {} bytes, got {})",
-            offset + 6,
-            body.len()
-        ));
+        return Err(Error::InsufficientMetadataBytes {
+            expected: (offset + 6) as u32,
+            found: body.len() as u32,
+        });
     }
 
     let creation_date_bytes = &body[offset..offset + 4];
@@ -80,21 +71,21 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
     let calculated_checksum = u16::from_le_bytes(calculate_checksum(body.to_vec()));
     let footer_file_checksum = u16::from_le_bytes([bytes[bytes.len() - 2], bytes[bytes.len() - 1]]);
     if file_checksum != calculated_checksum {
-        return Err(format!(
-            "Failed to load file: header checksum mismatch (expected {}, calculated {})",
-            file_checksum, calculated_checksum
-        ));
+        return Err(Error::HeaderChecksumMismatch {
+            expected: file_checksum,
+            found: calculated_checksum,
+        });
     }
     if file_checksum != footer_file_checksum {
-        return Err(format!(
-            "Failed to load file: footer checksum mismatch (expected {}, found {})",
-            file_checksum, footer_file_checksum
-        ));
+        return Err(Error::HeaderChecksumMismatch {
+            expected: file_checksum,
+            found: footer_file_checksum,
+        });
     }
 
     let game_data = &body[offset + 6..body.len()];
     if game_data.is_empty() {
-        return Err("Failed to load file: game data is empty".to_string());
+        return Err(Error::GameDataIsEmpty);
     }
 
     let gamedata: GameData = match game {
@@ -107,7 +98,7 @@ pub fn load(bytes: Vec<u8>) -> Result<TggFile, String> {
             GameData::Crossword(crossword_data)
         }
         Game::WordSearch => {
-            return Err("Failed to load file: Word Search is not yet implemented".to_string());
+            unimplemented!()
         }
     };
 

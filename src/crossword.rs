@@ -1,4 +1,5 @@
 use crate::utils::extract_cstring_with_offset;
+use crate::Error;
 use std::usize;
 
 #[derive(Debug)]
@@ -12,10 +13,10 @@ pub struct CrosswordData {
 }
 
 impl CrosswordData {
-    pub fn load(bytes: &[u8]) -> Result<CrosswordData, String> {
+    pub fn load(bytes: &[u8]) -> Result<CrosswordData, Error> {
         let mut offset = 0;
         if bytes.len() < 3 {
-            return Err("Unexpected end of file while parsing".to_string());
+            return Err(Error::UnexpectedEndOfFile);
         }
         let width = bytes[offset];
         offset += 1;
@@ -25,13 +26,11 @@ impl CrosswordData {
         offset += 1;
 
         if width == 0 || height == 0 {
-            return Err(
-                "Invalid crossword dimensions: width and height must be non-zero".to_string(),
-            );
+            return Err(Error::WidthOrHeightIsZero);
         }
 
         if total_clues == 0 {
-            return Err("Invalid crossword: total clues must be greater than zero".to_string());
+            return Err(Error::TotalCluesIsZero);
         }
 
         // Parse horizontal clues
@@ -53,20 +52,21 @@ impl CrosswordData {
         offset += 1; // Skip the 0x00 separator
 
         if horizontal_clues.len() + vertical_clues.len() != total_clues as usize {
-            return Err(format!(
-                "Failed to load Crossword: expected {} clues, found {} clues",
-                total_clues,
-                horizontal_clues.len() + vertical_clues.len()
-            ));
+            return Err(Error::ClueCountMismatch {
+                expected: total_clues,
+                found: (horizontal_clues.len() + vertical_clues.len()) as u32,
+            });
         };
 
         let expected_bytes = offset as usize + (width * height) as usize * 2;
 
         // Multiply the product of width and height by 2 to account for the number byte with every char
         if expected_bytes != bytes.len() {
-            return Err(format!("Failed to load Crossword: based on width and height, {} bytes are expected, but {} bytes are found", expected_bytes, bytes.len()));
+            return Err(Error::NotEnoughCrosswordBytes {
+                expected: expected_bytes as u32,
+                found: bytes.len() as u32,
+            });
         }
-
         let mut crossword_data: Vec<Vec<CrosswordBox>> = Vec::new();
 
         for _ in 0..height {
@@ -79,7 +79,7 @@ impl CrosswordData {
                 };
                 let crossword_box = match CrosswordBox::new(number, value) {
                     Ok(crossword_box) => crossword_box,
-                    Err(err) => return Err(err.to_string()),
+                    Err(err) => return Err(err),
                 };
                 row.push(crossword_box);
                 offset += 2;
@@ -103,15 +103,21 @@ impl CrosswordData {
         horizontal_clues: Vec<CrosswordClue>,
         vertical_clues: Vec<CrosswordClue>,
         crossword_data: Vec<Vec<CrosswordBox>>,
-    ) -> Result<CrosswordData, &'static str> {
+    ) -> Result<CrosswordData, Error> {
         // Validate crossword size
         if crossword_data.len() != height as usize {
-            return Err("Height of crossword did not match height of crossword data");
+            return Err(Error::HeightCrosswordDataMismatch {
+                height,
+                crossword_height: crossword_data.len() as u32,
+            });
         }
 
         for row in &crossword_data {
             if row.len() != width as usize {
-                return Err("Width of crossword did not match width of crossword data");
+                return Err(Error::WidthCrosswordDataMismatch {
+                    width,
+                    crossword_width: row.len() as u32,
+                });
             }
         }
 
@@ -120,7 +126,9 @@ impl CrosswordData {
         for row in &crossword_data {
             for item in row {
                 if numbers_in_crossword.contains(&item.number) && item.number != 0 {
-                    return Err("Crossword contains duplicate numbers");
+                    return Err(Error::DuplicateNumber {
+                        number: item.number,
+                    });
                 }
 
                 numbers_in_crossword.push(item.number);
@@ -131,11 +139,15 @@ impl CrosswordData {
         let mut clue_numbers: Vec<u8> = Vec::new();
         for clue in &vertical_clues {
             if !numbers_in_crossword.contains(&clue.number) {
-                return Err("A vertical clue contains a number not found in the crossword");
+                return Err(Error::VerticalClueContainsInvalidNumber {
+                    number: clue.number,
+                });
             }
 
             if clue_numbers.contains(&clue.number) {
-                return Err("A vertical clue contains a duplicate number");
+                return Err(Error::VerticalClueContainsDuplicate {
+                    number: clue.number,
+                });
             }
 
             clue_numbers.push(clue.number);
@@ -146,11 +158,15 @@ impl CrosswordData {
         // Horizontal clues
         for clue in &horizontal_clues {
             if !numbers_in_crossword.contains(&clue.number) {
-                return Err("A horizontal clue contains a number not found in the crossword");
+                return Err(Error::HorizontalClueContainsInvalidNumber {
+                    number: clue.number,
+                });
             }
 
             if clue_numbers.contains(&clue.number) {
-                return Err("A horizontal clue contains a duplicate number");
+                return Err(Error::HorizontalClueContainsDuplicate {
+                    number: clue.number,
+                });
             }
 
             clue_numbers.push(clue.number);
@@ -226,19 +242,19 @@ pub struct CrosswordBox {
 }
 
 impl CrosswordBox {
-    pub fn new(number: u8, value: CrosswordBoxValue) -> Result<CrosswordBox, &'static str> {
+    pub fn new(number: u8, value: CrosswordBoxValue) -> Result<CrosswordBox, Error> {
         match value {
             CrosswordBoxValue::Letter(value) => {
                 if !value.is_ascii() {
-                    return Err("Failed to create crossword box, letter must be ASCII");
+                    return Err(Error::NonAsciiCharacter);
                 }
 
                 if !value.is_alphabetic() {
-                    return Err("Failed to create crossword box, letter must be alphabetic");
+                    return Err(Error::NonAlphabeticCharacter);
                 }
 
                 if value.is_lowercase() {
-                    return Err("Failed to create crossword box, letter must be uppercase");
+                    return Err(Error::NonUppercaseCharacter);
                 }
             }
             _ => {}
@@ -280,12 +296,12 @@ impl CrosswordBoxValue {
         }
     }
 
-    pub fn from_byte(byte: u8) -> Result<Self, String> {
+    pub fn from_byte(byte: u8) -> Result<Self, Error> {
         match byte {
             0x20 => Ok(CrosswordBoxValue::Empty), // ASCII for space
             0x23 => Ok(CrosswordBoxValue::Solid), // ASCII for #
             b if b.is_ascii_alphabetic() => Ok(CrosswordBoxValue::Letter(b as char)),
-            _ => Err(format!("Invalid byte for CrosswordBoxValue: {:02X}", byte)),
+            _ => Err(Error::InvalidCrosswordBoxByte { found: byte }),
         }
     }
 }
