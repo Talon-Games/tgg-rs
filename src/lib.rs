@@ -89,6 +89,10 @@ impl TggFile {
         return self.header.game.to_string();
     }
 
+    pub fn get_game(&self) -> &Game {
+        return &self.header.game;
+    }
+
     pub fn get_title(&self) -> String {
         return self.metadata.title.to_string();
     }
