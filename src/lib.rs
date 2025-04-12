@@ -7,7 +7,7 @@ use crate::date::format_timestamp;
 use crate::load::load;
 use crate::utils::calculate_checksum;
 pub mod error;
-use crate::error::Error;
+pub use crate::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const ID: &str = "TalonGamesGame";

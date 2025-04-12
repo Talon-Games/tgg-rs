@@ -1,6 +1,6 @@
 [package]
 name = "tgg"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["cqb13 <cqb13.dev@gmail.com>"]
 description = "Library for reading TGG files used by Talon Games"
