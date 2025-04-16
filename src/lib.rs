@@ -113,8 +113,8 @@ impl TggFile {
         return self.metadata.get_date();
     }
 
-    pub fn get_game_data<'a>(&'a self) -> &'a GameData {
-        return &self.gamedata;
+    pub fn get_game_data(self) -> GameData {
+        return self.gamedata;
     }
 }
 
